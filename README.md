@@ -1,4 +1,6 @@
-# dao.casino
+# DAO.Casino
+
+DAO.Casino project on GitHub: https://github.com/DaoCasino
 
 Airalab примет участие в проекте DAO.Casino, в части реализации и развития инвестиционного фонда данного проекта в сети Ethereum. Мы будем придерживаться следующего плана работ.
 
