@@ -13,8 +13,8 @@ import 'common/Object.sol';
  *          var random = _lucky % 100;
  *          var game = games[_id];
  *          // Primitive HI/LO game
- *          var win = game.bet == 0 && random < 45
- *                  || game.bet > 0 && random > 55;
+ *          var win =  ((game.bet == 0) && (random < 45))
+ *                  || ((game.bet > 0) && (random > 55));
  *          if (win) if (!game.player.send(game.value * 2)) throw;
  *          return true;
  *      }
@@ -39,7 +39,8 @@ contract Signidice is Object {
         address player;
         uint256 value;
         uint256 bet;
-        uint96  random;
+        bytes32 random;
+        bool    closed;
     }
 
     Game[] public games;
@@ -66,9 +67,11 @@ contract Signidice is Object {
         usedRandom[msg.sender][_random] = true;
 
         var id = games.length;
-        games.push(Game(msg.sender, msg.value, _bet, _random));
+        var random = bytes32(uint256(msg.sender) << 96 | _random);
+        games.push(Game(msg.sender, msg.value, _bet, random, false));
         gamesOf[msg.sender].push(id);
-        RollDice(id, uint256(msg.sender) << 96 | _random);
+        RollDice(id, random);
+        return id;
     }
 
     /**
@@ -76,7 +79,7 @@ contract Signidice is Object {
      * @param id Game identifier
      * @param v Concatenation of player address and random number
      */
-    event RollDice(uint256 indexed id, uint256 indexed v);
+    event RollDice(uint256 indexed id, bytes32 indexed v);
 
     /**
      * @dev Confirm roll by casino oracle
@@ -91,12 +94,15 @@ contract Signidice is Object {
         onlyOwner
     {
         var game = games[_id];
-        var gameHash = uint256(game.player) << 96 | game.random;
+        // Check for game is open
+        if (game.closed) throw;
         // Casino falcify check
-        if (ecrecover(bytes32(gameHash), _v, _r, _s) == owner) {
+        if (ecrecover(game.random, _v, _r, _s) == owner) {
             if (!playerReward(_id, uint256(sha3(_v, _r, _s))))
                 throw;
         } else if (!game.player.send(bountyValue)) throw;
+        // Close the game
+        game.closed = true;
     }
 
     /**
